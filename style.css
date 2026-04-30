@@ -114,3 +114,14 @@ canvas { display: block; width: 100%; cursor: crosshair; }
 
 .toast { position: fixed; bottom: max(24px, env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%) translateY(80px); background: #1a1a1a; color: white; padding: 10px 20px; border-radius: 20px; font-size: 13px; font-weight: 500; transition: transform 0.25s ease; z-index: 999; white-space: nowrap; }
 .toast.show { transform: translateX(-50%) translateY(0); }
+
+.photo-section-label { font-size: 12px; color: var(--text2); margin-bottom: 8px; }
+.photo-grid { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
+.photo-thumb-wrap { position: relative; width: 80px; height: 80px; flex-shrink: 0; }
+.photo-thumb { width: 80px; height: 80px; object-fit: cover; border-radius: var(--radius-sm); border: 0.5px solid var(--border); cursor: pointer; display: block; }
+.photo-thumb:active { opacity: 0.8; }
+.photo-del { position: absolute; top: -6px; right: -6px; width: 20px; height: 20px; border-radius: 50%; background: #b91c1c; color: white; border: none; font-size: 14px; line-height: 1; cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0; }
+.photo-add-btn { display: inline-flex; align-items: center; justify-content: center; padding: 8px 16px; border: 0.5px dashed #bbb; border-radius: var(--radius-sm); background: transparent; color: var(--text3); cursor: pointer; font-size: 13px; font-family: inherit; }
+.photo-add-btn:active { background: var(--bg); color: var(--text); }
+.photo-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 9999; display: flex; align-items: center; justify-content: center; padding: 20px; }
+.photo-overlay-inner { width: 100%; max-width: 500px; }

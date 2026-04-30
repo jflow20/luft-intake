@@ -9,6 +9,7 @@ let jobs = [];
 let currentJobId = null;
 let openingCount = 0;
 const canvasState = {};
+const photoState = {};
 const STAMP_TOOLS = ['handle', 'slide-l', 'slide-r', 'chev-r', 'chev-l'];
 const COLORS = ['#1a1a1a','#c0392b','#2980b9','#27ae60','#8e44ad','#e67e22'];
 const STROKES = [1.5, 2.5, 4];
@@ -67,6 +68,7 @@ function newJob() {
   currentJobId = 'job_' + Date.now();
   openingCount = 0;
   Object.keys(canvasState).forEach(k => delete canvasState[k]);
+  Object.keys(photoState).forEach(k => delete photoState[k]);
   clearForm();
   document.getElementById('openings-container').innerHTML = '';
   const today = new Date().toISOString().split('T')[0];
@@ -82,6 +84,7 @@ function editJob(id) {
   currentJobId = id;
   openingCount = 0;
   Object.keys(canvasState).forEach(k => delete canvasState[k]);
+  Object.keys(photoState).forEach(k => delete photoState[k]);
   document.getElementById('openings-container').innerHTML = '';
   loadFormFromJob(job);
   showScreen('form');
@@ -147,7 +150,8 @@ function collectFormData() {
       oh: document.getElementById('oh-' + id)?.value || '',
       notes: document.getElementById('notes-' + id)?.value || '',
       paths: canvasState[id].paths,
-      drawingDataUrl: canvas ? canvas.toDataURL('image/png') : null
+      drawingDataUrl: canvas ? canvas.toDataURL('image/png') : null,
+      photos: photoState[id] || []
     });
   }
   return {
@@ -234,6 +238,14 @@ function addOpening(cloneId, loadData) {
     </div>
     <div class="canvas-wrap"><canvas id="canvas-${id}" height="280"></canvas></div>
     <div class="field" style="margin-top:8px"><label>Notes</label><textarea id="notes-${id}" rows="2" placeholder="Conditions, special requests...">${gv('notes')}</textarea></div>
+    <div style="margin-top:10px">
+      <div class="photo-section-label">Photos</div>
+      <div class="photo-grid" id="photo-grid-${id}"></div>
+      <label class="photo-add-btn">
+        <input type="file" accept="image/*" capture="environment" multiple style="display:none" onchange="handlePhotos(${id}, this)">
+        <span>+ Add photos</span>
+      </label>
+    </div>
   `;
   document.getElementById('openings-container').appendChild(div);
 
@@ -243,6 +255,9 @@ function addOpening(cloneId, loadData) {
     redoStack: [], drawing: false, startX: 0, startY: 0, snapshot: null
   };
 
+  photoState[id] = loadData?.photos ? [...loadData.photos] : (src ? [...(photoState[cloneId] || [])] : []);
+  renderPhotos(id);
+
   initCanvas(id);
   div.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
@@ -251,6 +266,7 @@ function removeOpening(id) {
   const el = document.getElementById('op-' + id);
   if (el) el.remove();
   delete canvasState[id];
+  delete photoState[id];
 }
 
 function makeToolbar(id) {
@@ -470,6 +486,61 @@ function setStroke(id, stroke, el) {
 function undoCanvas(id) { const s = canvasState[id]; if (s?.paths.length) { s.redoStack.push(s.paths.pop()); redraw(id); } }
 function clearCanvas(id) { if (canvasState[id]) { canvasState[id].paths = []; canvasState[id].redoStack = []; redraw(id); } }
 
+// ─── Photos ───────────────────────────────────────────────────────
+function handlePhotos(id, input) {
+  const files = Array.from(input.files);
+  if (!files.length) return;
+  if (!photoState[id]) photoState[id] = [];
+  let loaded = 0;
+  files.forEach(file => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      photoState[id].push({ dataUrl: e.target.result, name: file.name });
+      loaded++;
+      if (loaded === files.length) renderPhotos(id);
+    };
+    reader.readAsDataURL(file);
+  });
+  input.value = '';
+}
+
+function renderPhotos(id) {
+  const grid = document.getElementById('photo-grid-' + id);
+  if (!grid) return;
+  const photos = photoState[id] || [];
+  grid.innerHTML = '';
+  photos.forEach((photo, idx) => {
+    const wrap = document.createElement('div');
+    wrap.className = 'photo-thumb-wrap';
+    wrap.innerHTML = `
+      <img src="${photo.dataUrl}" class="photo-thumb" onclick="viewPhoto('${id}',${idx})">
+      <button class="photo-del" onclick="deletePhoto(${id},${idx})" title="Remove">×</button>
+    `;
+    grid.appendChild(wrap);
+  });
+}
+
+function deletePhoto(id, idx) {
+  if (!photoState[id]) return;
+  photoState[id].splice(idx, 1);
+  renderPhotos(id);
+}
+
+function viewPhoto(id, idx) {
+  const photo = (photoState[id] || [])[idx];
+  if (!photo) return;
+  const overlay = document.createElement('div');
+  overlay.className = 'photo-overlay';
+  overlay.innerHTML = `
+    <div class="photo-overlay-inner" onclick="event.stopPropagation()">
+      <img src="${photo.dataUrl}" style="max-width:100%;max-height:80vh;border-radius:8px;display:block">
+      <button onclick="this.closest('.photo-overlay').remove()" style="margin-top:12px;width:100%;padding:12px;background:#1a2744;color:white;border:none;border-radius:8px;font-size:15px;cursor:pointer">Close</button>
+    </div>
+  `;
+  overlay.addEventListener('click', () => overlay.remove());
+  document.body.appendChild(overlay);
+}
+
 // ─── PDF Export ───────────────────────────────────────────────────
 async function exportPDF() {
   const { jsPDF } = window.jspdf;
@@ -573,6 +644,28 @@ async function exportPDF() {
         y += imgH + 12;
       } catch {}
     }
+
+    if (op.photos && op.photos.length) {
+      checkPage(30);
+      doc.setFontSize(8); doc.setFont('helvetica','bold'); doc.setTextColor(...navy);
+      doc.text(`Photos (${op.photos.length})`, ML, y); y += 10;
+      const photoCols = 2;
+      const photoW = (PW - ML - MR - 8) / photoCols;
+      const photoH = photoW * 0.7;
+      for (let pi = 0; pi < op.photos.length; pi++) {
+        const col = pi % photoCols;
+        if (col === 0) checkPage(photoH + 12);
+        const px = ML + col * (photoW + 8);
+        try {
+          doc.addImage(op.photos[pi].dataUrl, 'JPEG', px, y, photoW, photoH);
+          doc.setDrawColor(...lightGray);
+          doc.rect(px, y, photoW, photoH);
+        } catch {}
+        if (col === photoCols - 1 || pi === op.photos.length - 1) y += photoH + 8;
+      }
+      y += 4;
+    }
+
     y += 10;
   }
 
