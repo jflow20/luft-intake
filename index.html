@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Luft Intake">
+<meta name="theme-color" content="#1a2744">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<title>Luft Intake</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- JOB LIST SCREEN -->
+<div id="screen-list" class="screen active">
+  <div class="top-bar">
+    <div class="top-bar-logo">
+      <div class="logo-mark">
+        <svg width="18" height="18" viewBox="0 0 20 20" fill="none">
+          <rect x="2" y="2" width="7" height="7" rx="1.2" fill="white" opacity="0.95"/>
+          <rect x="11" y="2" width="7" height="7" rx="1.2" fill="white" opacity="0.95"/>
+          <rect x="2" y="11" width="7" height="7" rx="1.2" fill="white" opacity="0.95"/>
+          <rect x="11" y="11" width="7" height="7" rx="1.2" fill="white" opacity="0.95"/>
+        </svg>
+      </div>
+      <span>Luft Intake</span>
+    </div>
+  </div>
+  <div class="list-body">
+    <div id="job-list-empty" class="empty-state">
+      <div class="empty-icon">
+        <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
+          <rect x="8" y="6" width="32" height="36" rx="3" stroke="#ccc" stroke-width="2"/>
+          <line x1="14" y1="16" x2="34" y2="16" stroke="#ccc" stroke-width="2" stroke-linecap="round"/>
+          <line x1="14" y1="22" x2="34" y2="22" stroke="#ccc" stroke-width="2" stroke-linecap="round"/>
+          <line x1="14" y1="28" x2="24" y2="28" stroke="#ccc" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <p>No jobs yet</p>
+      <p class="empty-sub">Tap New Job to get started</p>
+    </div>
+    <div id="job-list" class="job-list"></div>
+  </div>
+  <div class="fab-wrap">
+    <button class="fab" onclick="newJob()">+ New Job</button>
+  </div>
+</div>
+
+<!-- FORM SCREEN -->
+<div id="screen-form" class="screen">
+  <div class="top-bar">
+    <button class="back-btn" onclick="goBack()">
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+        <path d="M12 4L6 10L12 16" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      Jobs
+    </button>
+    <div class="top-bar-logo" style="position:absolute;left:50%;transform:translateX(-50%)">
+      <div class="logo-mark">
+        <svg width="18" height="18" viewBox="0 0 20 20" fill="none">
+          <rect x="2" y="2" width="7" height="7" rx="1.2" fill="white" opacity="0.95"/>
+          <rect x="11" y="2" width="7" height="7" rx="1.2" fill="white" opacity="0.95"/>
+          <rect x="2" y="11" width="7" height="7" rx="1.2" fill="white" opacity="0.95"/>
+          <rect x="11" y="11" width="7" height="7" rx="1.2" fill="white" opacity="0.95"/>
+        </svg>
+      </div>
+      <span>Luft Intake</span>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="top-btn" onclick="saveJob()">Save</button>
+      <button class="top-btn top-btn-pdf" onclick="exportPDF()">PDF</button>
+    </div>
+  </div>
+
+  <div class="form-body" id="form-body">
+
+    <div class="card">
+      <div class="card-title">Customer info</div>
+      <div class="field"><label>Customer name</label><input id="f-cname" type="text" placeholder="Full name" autocomplete="off"></div>
+      <div class="field"><label>Project address</label><input id="f-caddr" type="text" placeholder="Street address, city, zip" autocomplete="off"></div>
+      <div class="field-row">
+        <div class="field"><label>Date</label><input id="f-cdate" type="date"></div>
+        <div class="field"><label>Sales rep</label><input id="f-crep" type="text" placeholder="Name" autocomplete="off"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Product selection</div>
+      <div class="check-row">
+        <label class="check-item"><input type="checkbox" id="p-s8000"><span>S8000</span></label>
+        <label class="check-item"><input type="checkbox" id="p-linear"><span>Linear</span></label>
+        <label class="check-item"><input type="checkbox" id="p-smoovio"><span>Smoovio</span></label>
+        <label class="check-item"><input type="checkbox" id="p-multislide"><span>MultiSlide</span></label>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Frame & hardware options</div>
+      <div class="field-row">
+        <div class="field">
+          <label>Exterior frame color</label>
+          <select id="f-extcolor">
+            <option value="">Select</option>
+            <option>Black</option><option>Bronze</option><option>White</option><option>Sandstone</option><option>Antracite</option>
+            <option disabled>──────────</option>
+            <option>Custom</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Interior frame color</label>
+          <select id="f-intcolor">
+            <option value="">Select</option>
+            <option>Black</option><option>Bronze</option><option>White</option><option>Sandstone</option><option>Antracite</option>
+            <option disabled>──────────</option>
+            <option>Custom</option>
+          </select>
+        </div>
+      </div>
+      <div class="field-row3">
+        <div class="field"><label>Glaze</label><select id="f-glaze"><option value="">Select</option><option>Double pane</option><option>Triple pane</option></select></div>
+        <div class="field"><label>Hinge type</label><select id="f-hinge"><option value="">Select</option><option>Hidden</option><option>External</option></select></div>
+        <div class="field"><label>Handle type</label><select id="f-handle"><option value="">Select</option><option>Square</option><option>Round</option></select></div>
+      </div>
+    </div>
+
+    <div class="section-label">Windows & doors</div>
+    <div id="openings-container"></div>
+    <button class="add-opening-btn" onclick="addOpening()">+ Add window / door</button>
+
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
