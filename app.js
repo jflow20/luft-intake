@@ -627,11 +627,19 @@ async function exportPDF() {
     doc.text(label, ML + 8, y + 14);
     y += 28;
 
-    doc.setFontSize(8); doc.setFont('helvetica','normal'); doc.setTextColor(...gray);
-    doc.text(`Inside: ${op.iw && op.ih ? op.iw + '" x ' + op.ih + '"' : '—'}`, ML, y);
-    doc.text(`Outside: ${op.ow && op.oh ? op.ow + '" x ' + op.oh + '"' : '—'}`, ML + 140, y);
-    if (op.notes) doc.text(`Notes: ${op.notes}`, ML + 280, y, { maxWidth: PW - ML - MR - 280 });
-    y += 16;
+    const dimCols = [
+      { label: 'Inside dimensions', val: op.iw && op.ih ? `${op.iw}" W  x  ${op.ih}" H` : '—' },
+      { label: 'Outside dimensions', val: op.ow && op.oh ? `${op.ow}" W  x  ${op.oh}" H` : '—' },
+      { label: 'Notes', val: op.notes || '—' }
+    ];
+    dimCols.forEach(({ label, val }, i) => {
+      const x = ML + i * ((PW - ML - MR) / 3);
+      doc.setFontSize(8); doc.setFont('helvetica','normal'); doc.setTextColor(...gray);
+      doc.text(label, x, y);
+      doc.setFontSize(11); doc.setFont('helvetica','bold'); doc.setTextColor(...navy);
+      doc.text(val, x, y + 13, { maxWidth: (PW - ML - MR) / 3 - 8 });
+    });
+    y += 30;
 
     if (op.drawingDataUrl) {
       const imgW = PW - ML - MR;
