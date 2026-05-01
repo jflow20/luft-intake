@@ -15,6 +15,30 @@ const COLORS = ['#1a1a1a','#c0392b','#2980b9','#27ae60','#8e44ad','#e67e22'];
 const STROKES = [1.5, 2.5, 4];
 const WINDOW_TYPES = ['Turn & Tilt','Picture','Hopper','Specialty/Arch','Lift & Slide','Smoovio','Multislide','French','Entry'];
 
+// ─── Dark Mode ────────────────────────────────────────────────────
+function initDarkMode() {
+  const dark = localStorage.getItem('luft_dark') === '1';
+  if (dark) document.body.classList.add('dark');
+  updateDarkBtn(dark);
+}
+function toggleDarkMode() {
+  const isDark = document.body.classList.toggle('dark');
+  localStorage.setItem('luft_dark', isDark ? '1' : '0');
+  updateDarkBtn(isDark);
+}
+function updateDarkBtn(isDark) {
+  const btn = document.getElementById('dark-toggle');
+  if (btn) btn.textContent = isDark ? '🌙' : '☀️';
+}
+
+// ─── Search ───────────────────────────────────────────────────────
+function clearSearch() {
+  const input = document.getElementById('job-search');
+  if (input) input.value = '';
+  document.getElementById('search-clear').style.display = 'none';
+  renderJobList();
+}
+
 // ─── Storage ──────────────────────────────────────────────────────
 function loadJobs() {
   try { jobs = JSON.parse(localStorage.getItem(DB_KEY) || '[]'); } catch { jobs = []; }
@@ -39,10 +63,33 @@ function renderJobList() {
   loadJobs();
   const list = document.getElementById('job-list');
   const empty = document.getElementById('job-list-empty');
+  const searchInput = document.getElementById('job-search');
+  const query = (searchInput?.value || '').toLowerCase().trim();
+  const clearBtn = document.getElementById('search-clear');
+  if (clearBtn) clearBtn.style.display = query ? 'block' : 'none';
+
+  const filtered = query
+    ? jobs.filter(j =>
+        (j.customer || '').toLowerCase().includes(query) ||
+        (j.address || '').toLowerCase().includes(query) ||
+        (j.rep || '').toLowerCase().includes(query)
+      )
+    : jobs;
+
   list.innerHTML = '';
-  if (!jobs.length) { empty.style.display = 'block'; list.style.display = 'none'; return; }
+  if (!filtered.length) {
+    empty.style.display = 'block'; list.style.display = 'none';
+    if (query) {
+      empty.querySelector('p').textContent = 'No jobs match your search';
+      empty.querySelector('.empty-sub').textContent = 'Try a different name or address';
+    } else {
+      empty.querySelector('p').textContent = 'No jobs yet';
+      empty.querySelector('.empty-sub').textContent = 'Tap New Job to get started';
+    }
+    return;
+  }
   empty.style.display = 'none'; list.style.display = 'flex';
-  jobs.slice().reverse().forEach(job => {
+  filtered.slice().reverse().forEach(job => {
     const card = document.createElement('div');
     card.className = 'job-card';
     const name = job.customer || 'Unnamed job';
@@ -677,6 +724,61 @@ async function exportPDF() {
     y += 10;
   }
 
+  // Frame count summary
+  checkPage(80);
+  y += 10;
+  doc.setFillColor(...navy);
+  doc.rect(ML, y, PW - ML - MR, 22, 'F');
+  doc.setTextColor(255,255,255);
+  doc.setFontSize(10); doc.setFont('helvetica','bold');
+  doc.text('FRAME COUNT SUMMARY', ML + 8, y + 14);
+  y += 28;
+
+  const colW = (PW - ML - MR) / 4;
+  const headers = ['Room', 'Type', 'Dimensions (inside)', 'Qty'];
+  headers.forEach((h, i) => {
+    doc.setFontSize(8); doc.setFont('helvetica','bold'); doc.setTextColor(...gray);
+    doc.text(h, ML + i * colW, y);
+  });
+  y += 6;
+  doc.setDrawColor(...lightGray);
+  doc.line(ML, y, PW - MR, y);
+  y += 8;
+
+  let totalFrames = 0;
+  (job.openings || []).forEach((op, i) => {
+    checkPage(20);
+    const qty = parseInt(op.qty) || 1;
+    totalFrames += qty;
+    const bg = i % 2 === 0 ? [250,251,253] : [255,255,255];
+    doc.setFillColor(...bg);
+    doc.rect(ML, y - 5, PW - ML - MR, 16, 'F');
+    const cells = [
+      op.room || '—',
+      op.type || '—',
+      op.iw && op.ih ? `${op.iw}" x ${op.ih}"` : '—',
+      String(qty)
+    ];
+    cells.forEach((cell, ci) => {
+      doc.setFontSize(9); doc.setFont('helvetica', ci === 3 ? 'bold' : 'normal');
+      doc.setTextColor(...navy);
+      doc.text(cell, ML + ci * colW, y + 6, { maxWidth: colW - 6 });
+    });
+    y += 16;
+  });
+
+  doc.setDrawColor(...lightGray);
+  doc.line(ML, y, PW - MR, y);
+  y += 12;
+
+  doc.setFillColor(240, 243, 250);
+  doc.rect(ML, y, PW - ML - MR, 24, 'F');
+  doc.setFontSize(11); doc.setFont('helvetica','bold'); doc.setTextColor(...navy);
+  doc.text('Total frames', ML + 8, y + 15);
+  doc.setFontSize(14);
+  doc.text(String(totalFrames), PW - MR - colW + 4, y + 15);
+  y += 36;
+
   // Footer
   doc.setFontSize(8); doc.setFont('helvetica','normal'); doc.setTextColor(...gray);
   const pageCount = doc.getNumberOfPages();
@@ -701,5 +803,6 @@ function toast(msg) {
 }
 
 // ─── Init ─────────────────────────────────────────────────────────
+initDarkMode();
 loadJobs();
 renderJobList();
