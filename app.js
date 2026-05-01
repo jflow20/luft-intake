@@ -254,7 +254,7 @@ function addOpening(cloneId, loadData) {
         <button class="del-btn" onclick="removeOpening(${id})">Remove</button>
       </div>
     </div>
-    <div class="opening-grid4">
+    <div class="opening-grid" style="margin-bottom:10px">
       <div class="field"><label>Room</label><input type="text" id="room-${id}" placeholder="Living room" value="${gv('room')}" autocomplete="off"></div>
       <div class="field"><label>Type</label>
         <select id="wtype-${id}">
@@ -262,24 +262,26 @@ function addOpening(cloneId, loadData) {
           ${WINDOW_TYPES.map(t => `<option${t === wtype ? ' selected' : ''}>${t}</option>`).join('')}
         </select>
       </div>
-      <div class="field"><label>Inside W x H (in)</label>
-        <div class="dim-row">
-          <input type="number" id="iw-${id}" placeholder="W" value="${gv('iw')}">
-          <span class="dim-sep">x</span>
-          <input type="number" id="ih-${id}" placeholder="H" value="${gv('ih')}">
+    </div>
+    <div class="dim-block" style="margin-bottom:10px">
+      <div class="opening-grid">
+        <div class="field"><label>Inside W x H (in)</label>
+          <div class="dim-row">
+            <input type="number" id="iw-${id}" placeholder="W" value="${gv('iw')}">
+            <span class="dim-sep">x</span>
+            <input type="number" id="ih-${id}" placeholder="H" value="${gv('ih')}">
+          </div>
+        </div>
+        <div class="field"><label>Outside W x H (in)</label>
+          <div class="dim-row">
+            <input type="number" id="ow-${id}" placeholder="W" value="${gv('ow')}">
+            <span class="dim-sep">x</span>
+            <input type="number" id="oh-${id}" placeholder="H" value="${gv('oh')}">
+          </div>
         </div>
       </div>
-      <div class="field"><label>Qty</label><input type="number" id="qty-${id}" min="1" value="${gQty}" style="text-align:center;font-weight:600"></div>
     </div>
-    <div class="opening-grid" style="margin-bottom:10px">
-      <div class="field"><label>Outside W x H (in)</label>
-        <div class="dim-row">
-          <input type="number" id="ow-${id}" placeholder="W" value="${gv('ow')}">
-          <span class="dim-sep">x</span>
-          <input type="number" id="oh-${id}" placeholder="H" value="${gv('oh')}">
-        </div>
-      </div>
-    </div>
+    <div class="field" style="max-width:100px;margin-bottom:10px"><label>Qty</label><input type="number" id="qty-${id}" min="1" value="${gQty}" style="text-align:center;font-weight:600"></div>
     <div class="toolbar-wrap">
       ${makeToolbar(id)}
     </div>
