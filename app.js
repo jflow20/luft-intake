@@ -1,8 +1,3 @@
-// ─── Service Worker ───────────────────────────────────────────────
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => navigator.serviceWorker.register('sw.js'));
-}
-
 // ─── State ────────────────────────────────────────────────────────
 const DB_KEY = 'luft_jobs';
 let jobs = [];
