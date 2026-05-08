@@ -462,8 +462,26 @@ canvas { display: block; width: 100%; cursor: crosshair; }
 
 <script>
 if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/luft-intake/sw.js', { scope: '/luft-intake/' }).catch(() => {});
+  navigator.serviceWorker.register('/luft-intake/sw.js', { scope: '/luft-intake/' })
+    .then(reg => {
+      // Check for updates every time the app comes to the foreground
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') reg.update();
+      });
+      // When a new SW is found, wait for it to install then reload
+      reg.addEventListener('updatefound', () => {
+        const newWorker = reg.installing;
+        newWorker.addEventListener('statechange', () => {
+          if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+            window.location.reload();
+          }
+        });
+      });
+    })
+    .catch(() => {});
+  // If the SW controller changes (new SW took over), reload the page
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    window.location.reload();
   });
 }
 </script>
