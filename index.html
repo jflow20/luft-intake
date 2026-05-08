@@ -456,11 +456,14 @@ canvas { display: block; width: 100%; cursor: crosshair; }
 
 
 
+
+
+
+
 <script>
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/luft-intake/sw.js', { scope: '/luft-intake/' })
-      .catch(() => {});
+    navigator.serviceWorker.register('/luft-intake/sw.js', { scope: '/luft-intake/' }).catch(() => {});
   });
 }
 </script>
@@ -1056,6 +1059,8 @@ function collectFormData() {
 }
 
 function saveJob() {
+  // Blur any active input so mobile keyboard commits the value
+  if (document.activeElement) document.activeElement.blur();
   loadJobs();
   const job = collectFormData();
   const idx = jobs.findIndex(j => j.id === job.id);
@@ -1427,6 +1432,8 @@ function viewPhoto(id, idx) {
 
 // ─── PDF Export ───────────────────────────────────────────────────
 async function exportPDF() {
+  // Commit any active input on mobile before collecting
+  if (document.activeElement) document.activeElement.blur();
   const { jsPDF } = window.jspdf;
   const job = collectFormData();
   const doc = new jsPDF({ unit: 'pt', format: 'letter' });
@@ -1502,28 +1509,40 @@ async function exportPDF() {
 
   // Openings
   for (const op of (job.openings || [])) {
-    checkPage(200);
+    checkPage(260);
+    // Opening header bar
     doc.setFillColor(240, 243, 250);
-    doc.rect(ML, y, PW - ML - MR, 22, 'F');
+    doc.rect(ML, y, PW - ML - MR, 24, 'F');
     doc.setTextColor(...navy);
     doc.setFontSize(10); doc.setFont('helvetica','bold');
-    const label = `Opening — ${op.room || 'Unknown room'} · ${op.type || 'Unknown type'} · Qty: ${op.qty || 1}`;
-    doc.text(label, ML + 8, y + 14);
-    y += 28;
+    const label = `Opening — ${op.room || 'Unknown room'}   ·   ${op.type || 'Unknown type'}   ·   Qty: ${op.qty || 1}`;
+    doc.text(label, ML + 8, y + 16);
+    y += 32;
 
-    const dimCols = [
-      { label: 'Inside dimensions', val: op.iw && op.ih ? `${op.iw}" W  x  ${op.ih}" H` : '—' },
-      { label: 'Outside dimensions', val: op.ow && op.oh ? `${op.ow}" W  x  ${op.oh}" H` : '—' },
-      { label: 'Notes', val: op.notes || '—' }
+    // Dimensions row - two columns side by side with plenty of space
+    const dimColW = (PW - ML - MR) / 2 - 10;
+    const dims = [
+      { label: 'Inside dimensions', val: op.iw && op.ih ? `${op.iw}"  x  ${op.ih}"` : '—' },
+      { label: 'Outside dimensions', val: op.ow && op.oh ? `${op.ow}"  x  ${op.oh}"` : '—' }
     ];
-    dimCols.forEach(({ label, val }, i) => {
-      const x = ML + i * ((PW - ML - MR) / 3);
+    dims.forEach(({ label, val }, i) => {
+      const x = ML + i * (dimColW + 20);
       doc.setFontSize(8); doc.setFont('helvetica','normal'); doc.setTextColor(...gray);
       doc.text(label, x, y);
-      doc.setFontSize(11); doc.setFont('helvetica','bold'); doc.setTextColor(...navy);
-      doc.text(val, x, y + 13, { maxWidth: (PW - ML - MR) / 3 - 8 });
+      doc.setFontSize(13); doc.setFont('helvetica','bold'); doc.setTextColor(...navy);
+      doc.text(val, x, y + 16);
     });
-    y += 30;
+    y += 34;
+
+    // Notes on its own line
+    if (op.notes) {
+      doc.setFontSize(8); doc.setFont('helvetica','normal'); doc.setTextColor(...gray);
+      doc.text('Notes', ML, y);
+      doc.setFontSize(10); doc.setFont('helvetica','normal'); doc.setTextColor(...navy);
+      doc.text(op.notes, ML, y + 13, { maxWidth: PW - ML - MR });
+      y += 30;
+    }
+    y += 6;
 
     if (op.drawingDataUrl) {
       const imgW = PW - ML - MR;
@@ -1571,8 +1590,8 @@ async function exportPDF() {
   doc.text('FRAME COUNT SUMMARY', ML + 8, y + 14);
   y += 28;
 
-  const colW = (PW - ML - MR) / 4;
-  const headers = ['Room', 'Type', 'Dimensions (inside)', 'Qty'];
+  const colW = (PW - ML - MR) / 3;
+  const headers = ['Room', 'Type', 'Qty'];
   headers.forEach((h, i) => {
     doc.setFontSize(8); doc.setFont('helvetica','bold'); doc.setTextColor(...gray);
     doc.text(h, ML + i * colW, y);
@@ -1593,11 +1612,10 @@ async function exportPDF() {
     const cells = [
       op.room || '—',
       op.type || '—',
-      op.iw && op.ih ? `${op.iw}" x ${op.ih}"` : '—',
       String(qty)
     ];
     cells.forEach((cell, ci) => {
-      doc.setFontSize(9); doc.setFont('helvetica', ci === 3 ? 'bold' : 'normal');
+      doc.setFontSize(9); doc.setFont('helvetica', ci === 2 ? 'bold' : 'normal');
       doc.setTextColor(...navy);
       doc.text(cell, ML + ci * colW, y + 6, { maxWidth: colW - 6 });
     });
@@ -1613,7 +1631,7 @@ async function exportPDF() {
   doc.setFontSize(11); doc.setFont('helvetica','bold'); doc.setTextColor(...navy);
   doc.text('Total frames', ML + 8, y + 15);
   doc.setFontSize(14);
-  doc.text(String(totalFrames), PW - MR - colW + 4, y + 15);
+  doc.text(String(totalFrames), ML + colW * 2 + 4, y + 15);
   y += 36;
 
   // Footer
