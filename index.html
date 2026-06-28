@@ -1077,8 +1077,6 @@ function collectFormData() {
 }
 
 function saveJob() {
-  // Blur any active input so mobile keyboard commits the value
-  if (document.activeElement) document.activeElement.blur();
   loadJobs();
   const job = collectFormData();
   const idx = jobs.findIndex(j => j.id === job.id);
@@ -1181,6 +1179,7 @@ function makeToolbar(id) {
     <div class="tb-row">
       <span class="tg-label">Draw</span>
       <button class="tbtn active" id="btn-pen-${id}" onclick="setTool(${id},'pen')">Pen</button>
+      <button class="tbtn" id="btn-erase-${id}" onclick="setTool(${id},'erase')">Erase</button>
       <button class="tbtn" id="btn-line-${id}" onclick="setTool(${id},'line')">Line</button>
       <button class="tbtn" id="btn-rect-${id}" onclick="setTool(${id},'rect')">Rect</button>
       <button class="tbtn" id="btn-text-${id}" onclick="setTool(${id},'text')">Text</button>
@@ -1262,7 +1261,7 @@ function onStart(e, id) {
     if (txt) { s.paths.push({ tool: 'text', color: s.color, stroke: s.stroke, text: txt, x, y }); redraw(id); }
     s.drawing = false; return;
   }
-  if (s.tool === 'pen') s.paths.push({ tool: 'pen', color: s.color, stroke: s.stroke, points: [{ x, y }] });
+  if (s.tool === 'pen' || s.tool === 'erase') s.paths.push({ tool: s.tool, color: s.color, stroke: s.tool === 'erase' ? s.stroke * 6 : s.stroke, points: [{ x, y }] });
   s.snapshot = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height);
 }
 
@@ -1275,12 +1274,14 @@ function onMove(e, id) {
   const src = e.touches ? e.touches[0] : e;
   const x = src.clientX - r.left, y = src.clientY - r.top;
   const ctx = canvas.getContext('2d');
-  if (s.tool === 'pen') {
+  if (s.tool === 'pen' || s.tool === 'erase') {
     const path = s.paths[s.paths.length - 1];
     path.points.push({ x, y });
-    ctx.strokeStyle = s.color; ctx.lineWidth = s.stroke; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    ctx.globalCompositeOperation = s.tool === 'erase' ? 'destination-out' : 'source-over';
+    ctx.strokeStyle = s.color; ctx.lineWidth = path.stroke; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
     const pts = path.points;
     if (pts.length > 1) { ctx.beginPath(); ctx.moveTo(pts[pts.length-2].x, pts[pts.length-2].y); ctx.lineTo(x, y); ctx.stroke(); }
+    ctx.globalCompositeOperation = 'source-over';
   } else {
     ctx.putImageData(s.snapshot, 0, 0);
     ctx.strokeStyle = s.color; ctx.lineWidth = s.stroke; ctx.lineCap = 'round';
@@ -1360,10 +1361,12 @@ function redraw(id) {
   for (const p of s.paths) {
     if (STAMP_TOOLS.includes(p.tool)) { drawSymbol(ctx, p); continue; }
     ctx.strokeStyle = p.color; ctx.lineWidth = p.stroke; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.fillStyle = p.color;
-    if (p.tool === 'pen' && p.points?.length > 1) {
+    if ((p.tool === 'pen' || p.tool === 'erase') && p.points?.length > 1) {
+      ctx.globalCompositeOperation = p.tool === 'erase' ? 'destination-out' : 'source-over';
       ctx.beginPath(); ctx.moveTo(p.points[0].x, p.points[0].y);
       for (let i = 1; i < p.points.length; i++) ctx.lineTo(p.points[i].x, p.points[i].y);
       ctx.stroke();
+      ctx.globalCompositeOperation = 'source-over';
     }
     if (p.tool === 'line') { ctx.beginPath(); ctx.moveTo(p.x1,p.y1); ctx.lineTo(p.x2,p.y2); ctx.stroke(); }
     if (p.tool === 'rect') { ctx.beginPath(); ctx.rect(p.x1,p.y1,p.x2-p.x1,p.y2-p.y1); ctx.stroke(); }
@@ -1373,7 +1376,7 @@ function redraw(id) {
 
 function setTool(id, tool) {
   canvasState[id].tool = tool;
-  ['pen','line','rect','text',...STAMP_TOOLS].forEach(t => {
+  ['pen','erase','line','rect','text',...STAMP_TOOLS].forEach(t => {
     const b = document.getElementById('btn-' + t + '-' + id);
     if (b) b.classList.toggle('active', t === tool);
   });
@@ -1451,7 +1454,6 @@ function viewPhoto(id, idx) {
 // ─── PDF Export ───────────────────────────────────────────────────
 async function exportPDF() {
   // Commit any active input on mobile before collecting
-  if (document.activeElement) document.activeElement.blur();
   const { jsPDF } = window.jspdf;
   const job = collectFormData();
   const doc = new jsPDF({ unit: 'pt', format: 'letter' });
@@ -1493,9 +1495,9 @@ async function exportPDF() {
       doc.setFontSize(8); doc.setFont('helvetica','normal'); doc.setTextColor(...gray);
       doc.text(lbl, x, y);
       doc.setFontSize(11); doc.setFont('helvetica','bold'); doc.setTextColor(...navy);
-      doc.text(val, x, y + 12);
+      doc.text(val, x, y + 14);
     });
-    y += 26;
+    y += 32;
   });
   y += 6;
 
@@ -1517,13 +1519,13 @@ async function exportPDF() {
   hw.forEach(([lbl, val], i) => {
     const col = i % hcols;
     const x = ML + col * hcolW;
-    if (col === 0 && i > 0) y += 26;
+    if (col === 0 && i > 0) y += 32;
     doc.setFontSize(8); doc.setFont('helvetica','normal'); doc.setTextColor(...gray);
     doc.text(lbl, x, y);
     doc.setFontSize(10); doc.setFont('helvetica','bold'); doc.setTextColor(...navy);
-    doc.text(String(val), x, y + 12);
+    doc.text(String(val), x, y + 14);
   });
-  y += 32;
+  y += 38;
 
   // Openings
   for (const op of (job.openings || [])) {
@@ -1535,32 +1537,26 @@ async function exportPDF() {
     doc.setFontSize(10); doc.setFont('helvetica','bold');
     const label = `Opening — ${op.room || 'Unknown room'}   ·   ${op.type || 'Unknown type'}   ·   Qty: ${op.qty || 1}`;
     doc.text(label, ML + 8, y + 16);
-    y += 32;
+    y += 36;
 
-    // Dimensions row - two columns side by side with plenty of space
-    const dimColW = (PW - ML - MR) / 2 - 10;
-    const dims = [
-      { label: 'Inside dimensions', val: op.iw && op.ih ? `${op.iw}"  x  ${op.ih}"` : '—' },
-      { label: 'Outside dimensions', val: op.ow && op.oh ? `${op.ow}"  x  ${op.oh}"` : '—' }
-    ];
-    dims.forEach(({ label, val }, i) => {
-      const x = ML + i * (dimColW + 20);
-      doc.setFontSize(8); doc.setFont('helvetica','normal'); doc.setTextColor(...gray);
-      doc.text(label, x, y);
-      doc.setFontSize(13); doc.setFont('helvetica','bold'); doc.setTextColor(...navy);
-      doc.text(val, x, y + 16);
-    });
-    y += 34;
+    // Outside dimensions only
+    doc.setFontSize(9); doc.setFont('helvetica','normal'); doc.setTextColor(...gray);
+    doc.text('Outside dimensions', ML, y);
+    y += 15;
+    const outsideVal = op.ow && op.oh ? `${op.ow}"  \xd7  ${op.oh}"` : '\u2014';
+    doc.setFontSize(14); doc.setFont('helvetica','bold'); doc.setTextColor(...navy);
+    doc.text(outsideVal, ML, y);
+    y += 24;
 
     // Notes on its own line
     if (op.notes) {
       doc.setFontSize(8); doc.setFont('helvetica','normal'); doc.setTextColor(...gray);
       doc.text('Notes', ML, y);
       doc.setFontSize(10); doc.setFont('helvetica','normal'); doc.setTextColor(...navy);
-      doc.text(op.notes, ML, y + 13, { maxWidth: PW - ML - MR });
-      y += 30;
+      doc.text(op.notes, ML, y + 14, { maxWidth: PW - ML - MR });
+      y += 36;
     }
-    y += 6;
+    y += 10;
 
     if (op.drawingDataUrl) {
       const imgW = PW - ML - MR;
@@ -1595,7 +1591,7 @@ async function exportPDF() {
       y += 4;
     }
 
-    y += 10;
+    y += 16;
   }
 
   // Frame count summary
@@ -1621,12 +1617,12 @@ async function exportPDF() {
 
   let totalFrames = 0;
   (job.openings || []).forEach((op, i) => {
-    checkPage(20);
+    checkPage(24);
     const qty = parseInt(op.qty) || 1;
     totalFrames += qty;
     const bg = i % 2 === 0 ? [250,251,253] : [255,255,255];
     doc.setFillColor(...bg);
-    doc.rect(ML, y - 5, PW - ML - MR, 16, 'F');
+    doc.rect(ML, y - 6, PW - ML - MR, 20, 'F');
     const cells = [
       op.room || '—',
       op.type || '—',
@@ -1635,9 +1631,9 @@ async function exportPDF() {
     cells.forEach((cell, ci) => {
       doc.setFontSize(9); doc.setFont('helvetica', ci === 2 ? 'bold' : 'normal');
       doc.setTextColor(...navy);
-      doc.text(cell, ML + ci * colW, y + 6, { maxWidth: colW - 6 });
+      doc.text(cell, ML + ci * colW, y + 7, { maxWidth: colW - 6 });
     });
-    y += 16;
+    y += 20;
   });
 
   doc.setDrawColor(...lightGray);
